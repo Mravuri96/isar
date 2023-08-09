@@ -1,8 +1,77 @@
-## 3.0.6-dev.0
+## 4.0.0-dev.9
+
+⚠️ ISAR V4 IS NOT READY FOR PRODUCTION USE ⚠️
+
+This version does not support database migration yet and cannot open Isar v3 databases. The stable version will be released in a few weeks and will support migration from v3.
+
+### Breaking
+
+Changed transactions API:
+
+| old              | new            |
+| ---------------- | -------------- |
+| `writeTxn()`     | `writeAsync()` |
+| `writeTxnSync()` | `write()`      |
+| `txn()`          | `readAsync()`  |
+| `txnSync()`      | `read()`       |
+
+- All operations are now synchronous by default and there are `Async` methods for asynchronous operations.
+- Ids now need to be called `id` or annotated with `@id`
+- Ids can no longer be `nullable`. There is a new `collection.autoIncrement()` function to automatically generate ids.
+- Enums no longer need to be annotated with `@enumerated` instead there is a new `@enumValue` annotation to specify the value property of an enum
+- Where clauses have been removed in favor of automatic index handling
+- Isar links have been removed in favor of embedded objects
+- Indexes have been simplified
+- The Android minimum SDK version is now 23
+
+### Enhancements
+
+- Web support is back!!! In-memory only for now (persistence will come soon)
+- Encrypted databases
+- String ids
+- Fetching multiple properties simultaneously
+- Partial and Bulk updates using `collection.update()` and `query.updateAll()`
+- SQLite storage engine support
+- Support for `dynamic`, `List<dynamic>` and `Map<String, dynamic>` properties
+- Required parameters for embedded objects
+- Case insensitive sorting
+- Much faster database initialization
+- Improved performance for all operations
+- Decoding objects no longer blocks the UI isolate
+- New `@utc` annotation to receive `DateTime` objects in UTC
+- Support for freezed and other code generators
+
+## 3.1.0+1
+
+### Fixes
+
+- Fixed error building MacOS library
+
+## 3.1.0
+
+### Breaking
+
+Sorry for this breaking change. Unfortunately, it was necessary to fix stability issues on Android.
+
+- `directory` is now required for `Isar.open()` and `Isar.openSync()`
+
+### Fixes
+
+- Fixed a crash that occasionally occurred when opening Isar
+- Fixed a schema migration issue
+- Fixed an issue where embedded class renaming didn't work correctly
+
+### Enhancements
+
+- Many internal improvements
+- Performance improvements
+
+## 3.0.6
 
 ### Fixes
 
 - Add check to verify transactions are used for correct instance
+- Add check to verify that async transactions are still active
 - Fix upstream issue with opening databases
 
 ## 3.0.5

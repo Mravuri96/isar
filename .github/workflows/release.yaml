@@ -6,21 +6,8 @@ on:
       - "*"
 
 jobs:
-  verify_version:
-    name: Verify version matches release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dart-lang/setup-dart@v1
-      - name: Verify release version
-        run: |
-          dart pub get
-          dart tool/verify_release_version.dart ${{ github.ref_name }}
-        working-directory: packages/isar
-
   build_binaries:
     name: Build Binaries
-    needs: verify_version
     strategy:
       fail-fast: false
       matrix:
@@ -34,30 +21,27 @@ jobs:
           - os: ubuntu-latest
             artifact_name: libisar_android_x64.so
             script: build_android.sh x64
-          - os: ubuntu-latest
-            artifact_name: libisar_android_x86.so
-            script: build_android.sh x86
           - os: macos-latest
             artifact_name: isar_ios.xcframework.zip
             script: build_ios.sh
-          - os: ubuntu-18.04 # use older linux for glibc compatibility see #288
+          - os: ubuntu-20.04
             artifact_name: libisar_linux_x64.so
             script: build_linux.sh x64
           - os: macos-latest
             artifact_name: libisar_macos.dylib
             script: build_macos.sh
           - os: windows-latest
-            artifact_name: isar_windows_arm64.dll
-            script: build_windows.sh
-          - os: windows-latest
             artifact_name: isar_windows_x64.dll
             script: build_windows.sh x64
+          - os: ubuntu-latest
+            artifact_name: isar.wasm
+            script: build_wasm.sh
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: Prepare Build
         uses: ./.github/actions/prepare-build
-      - name: Set env
+      - name: Set Isar Version
         run: echo "ISAR_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
       - name: Build binary
         run: bash tool/${{ matrix.script }}
@@ -76,6 +60,7 @@ jobs:
 
   build_inspector:
     name: Build Inspector
+    if: ${{ false }}
     needs: testlab
     runs-on: ubuntu-latest
     steps:
@@ -95,26 +80,35 @@ jobs:
 
   publish:
     name: Publish
-    needs: build_inspector
+    needs: testlab
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
-      - name: pub get
-        run: dart pub get
-        working-directory: packages/isar
+      - uses: dart-lang/setup-dart@v1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - name: Wait for tests to succeed
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          running-workflow-name: "Publish"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+      - name: Set Isar Version
+        run: echo "ISAR_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
       - name: Download Binaries
         run: sh tool/download_binaries.sh
-      - name: pub.dev credentials
-        run: |
-          mkdir -p $HOME/.config/dart
-          echo '${{ secrets.PUB_JSON }}' >> $HOME/.config/dart/pub-credentials.json
+      - name: Adjust Version
+        run: find . -type f -exec sed -i "s/0.0.0-placeholder/${{ github.ref_name }}/g" {} +
+      - uses: JS-DevTools/npm-publish@v2
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
       - name: Publish isar
         run: dart pub publish --force
         working-directory: packages/isar
-      - name: Publish isar_generator
-        run: dart pub publish --force
-        working-directory: packages/isar_generator
       - name: Publish isar_flutter_libs
         run: dart pub publish --force
         working-directory: packages/isar_flutter_libs
