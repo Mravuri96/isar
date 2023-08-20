@@ -16,7 +16,7 @@ build/
 # Rust related
 target/
 *.a
-*.so
+# *.so
 *.dylib
 *.dll
 *.wasm
